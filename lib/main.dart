@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -34,6 +35,8 @@ class _MyGalleryAppState extends State<MyGalleryApp> {
   //이미지 픽커를 사용한 사진 선택
   final ImagePicker _picker = ImagePicker();
   List<XFile>? images;
+  int currentPage = 0;
+  final pageController = PageController();
 
   @override
   void initState() {
@@ -43,6 +46,19 @@ class _MyGalleryAppState extends State<MyGalleryApp> {
 
   Future<void> loadImages() async {
     images = await _picker.pickMultiImage();
+    if (images != null) {
+      Timer.periodic(const Duration(seconds: 5), (timer) {
+        currentPage++;
+        if (currentPage > images!.length - 1) {
+          currentPage = 0;
+        }
+        pageController.animateToPage(
+          currentPage,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeIn,
+        );
+      });
+    }
     setState(() {});
   }
 
@@ -53,20 +69,25 @@ class _MyGalleryAppState extends State<MyGalleryApp> {
         title: const Text('전자액자'),
       ),
       body: images == null
-          ? Center(child: Text('No Data'))
-          : FutureBuilder<Uint8List>(
-              future: images![0].readAsBytes(),
-              builder: (context, snapshot) {
-                final data = snapshot.data;
-                if (data == null ||
-                    snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return Image.memory(
-                  data,
-                  width: double.infinity,
-                );
-              }),
+          ? const Center(child: Text('No Data'))
+          : PageView(
+              controller: pageController,
+              children: images!.map((image) {
+                return FutureBuilder<Uint8List>(
+                    future: image.readAsBytes(),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data;
+                      if (data == null ||
+                          snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      return Image.memory(
+                        data,
+                        width: double.infinity,
+                      );
+                    });
+              }).toList(),
+            ),
     );
   }
 }
